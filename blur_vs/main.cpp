@@ -48,10 +48,10 @@ void printMatrix(std::vector<std::vector<T>>& matrix) {
 }
 
 template <typename T>
-void blur(std::vector<std::vector<T>>& matrix, int blur_radius)
+void blur(std::vector<std::vector<T>> &matrix, int blur_radius)
 {
-    uint32_t h = matrix.size();
-    uint32_t w = matrix[0].size();
+    int h = matrix.size();
+    int w = matrix[0].size();
 
     std::vector<std::vector<T>> result = matrix;
 
@@ -98,8 +98,8 @@ void blur(std::vector<std::vector<T>>& matrix, int blur_radius)
     }*/
 }
 
-template <typename T, typename CH>
-cv::Mat vecToCvMat(std::vector<std::vector<T>> &input_vec, CH channel) {
+template <typename T>
+cv::Mat vecToCvMat(std::vector<std::vector<T>> &input_vec) {
     int rows = input_vec.size();
     int cols = input_vec[0].size();
 
@@ -110,13 +110,10 @@ cv::Mat vecToCvMat(std::vector<std::vector<T>> &input_vec, CH channel) {
             res.at<uchar>(i,j) = input_vec[i][j];
         }
     }
-    //res = cv::Mat::zeros(cv::Size(rows, cols), channel);
     return res;
 }
 
 int main() {
-    std::vector<std::vector<std::vector<int>>> img_matrix;
-
     std::string image_path;
     try {
         image_path = cv::samples::findFile("../image_input/cat.jpg", 1);
@@ -126,69 +123,53 @@ int main() {
     }
 
     cv::Mat image = cv::imread(image_path, cv::IMREAD_COLOR);
-    auto image_depth =  image.type();
     auto image_ch = image.channels();
-    cv::Mat image_channels[3];
+
+    cv::Mat *image_channels = new cv::Mat[image_ch];
+    /*std::vector<cv::Mat> image_channels;
+    image_channels.resize(image_ch);*/
     cv::split(image, image_channels);
 
     std::vector<cv::Mat> output;
 
     std::cout << "Input blur radius" << std::endl;
-    int blur_radius =  4;
-    //std::cin >> blur_radius;
-    //std::cout << image_channels[0] << std::endl;
+    int blur_radius;
+    std::cin >> blur_radius;
 
+    std::vector<std::vector<std::vector<int>>> img_matrix;
     img_matrix.resize(image_ch);
     int ch = 0;
+    std::vector<std::thread> thread_vec;
     for (auto& new_matrix : img_matrix) {
-        new_matrix.resize(image_channels[ch].rows);
-        for (int i = 0; i < image_channels[ch].rows; ++i) {
-            new_matrix[i].resize(image_channels[ch].cols);
-            for (int j = 0; j < image_channels[ch].cols; ++j) {
-                try {
-                    new_matrix[i][j] = image_channels[ch].at<uchar>(i, j);
-                }
-                catch (std::exception err) {
-                    std::cerr << "Error caught: " << err.what() << std::endl;
+        thread_vec.emplace_back(std::thread ([&new_matrix, &image_channels, blur_radius, ch]() {
+            //simpleTimer st;
+            new_matrix.resize(image_channels[ch].rows);
+            for (int i = 0; i < image_channels[ch].rows; ++i) {
+                new_matrix[i].resize(image_channels[ch].cols);
+                for (int j = 0; j < image_channels[ch].cols; ++j) {
+                    try {
+                        new_matrix[i][j] = image_channels[ch].at<uchar>(i, j);
+                    }
+                    catch (std::exception err) {
+                        std::cerr << "Error caught: " << err.what() << std::endl;
+                    }
                 }
             }
-        }
 
-        {
-            simpleTimer st;
-            std::vector<std::thread> thread_vector;
-            blur(new_matrix, blur_radius);
-            /*uint32_t thread_amount = new_matrix.size() / blur_radius;
-            const auto core_amount = std::thread::hardware_concurrency(); // TODO: limit amount of threads in realtion with amount of CPU cores.
-            uint32_t top_limit, bottom_limit;
-            thread_vector.reserve(thread_amount);
-            std::cout << thread_amount << " threads created" << std::endl;
-            top_limit = 0;
-            bottom_limit = top_limit + blur_radius;
-            std::vector<std::vector<std::vector<int>>> temp_matrix;
-            temp_matrix.resize(thread_amount);
-            for (int i = 0; i < thread_amount; ++i) {
-                thread_vector.emplace_back(std::thread(blur, std::ref(new_matrix), std::ref(temp_matrix[i]), blur_radius, top_limit, bottom_limit));
-                printMatrix(new_matrix);
-                top_limit = bottom_limit;
-                if (((new_matrix.size() - bottom_limit) / blur_radius) < 2) {
-                    bottom_limit = new_matrix.size();
-                }
-                else bottom_limit += blur_radius;
+            try {
+                blur(new_matrix, blur_radius);
             }
-            for (auto& t : thread_vector) {
-                t.join();
+            catch (std::exception err) {
+                std::cerr << "Exception in blur: " << err.what() << std::endl;
             }
-            new_matrix = temp_matrix[0];
-            for (uint32_t i = 1; i < thread_amount; ++i) {
-                new_matrix.insert(new_matrix.end(), temp_matrix[i].begin(), temp_matrix[i].end());
-            }*/
-        }
-
-        output.push_back(vecToCvMat(new_matrix, image_depth));
-        //std::cout << std::endl << std::endl << output.back() << std::endl << std::endl;
-        //printMatrix(new_matrix);
+        }));
         ++ch;
+    }
+    int i = 0;
+    for (auto& vec : thread_vec) {
+        vec.join();
+        output.push_back(vecToCvMat(img_matrix[i]));
+        ++i;
     }
     cv::Mat result;
     cv::merge(output, result);
