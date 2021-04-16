@@ -177,18 +177,17 @@ int main() {
     try {
         cv::namedWindow("Blur?");
         cv::imshow("Blur?", result);
-        cv::waitKey(0);
     }
     catch (cv::Exception e) {
         std::cerr << e.what() << std::endl;
     }
 
-    /*try {
-        cv::imwrite("../image_output/Tank.jpg", result);
+    try {
+        cv::imwrite("../image_output/cat.jpg", result);
     }
     catch (cv::Exception err) {
         std::cerr << "Exception caught: " << err.what() << std::endl;
-    }*/
+    }
 
     return 0;
 }
