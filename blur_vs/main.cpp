@@ -99,19 +99,22 @@ void blur(std::vector<std::vector<T>>& matrix, int blur_radius)
 }
 
 template <typename T, typename CH>
-cv::Mat vecToCvMat(std::vector<std::vector<T>> &input_vec, CH channel) {
+cv::Mat& vecToCvMat(std::vector<std::vector<T>> &input_vec, CH channel) {
     int rows = input_vec.size();
     int cols = input_vec[0].size();
 
-    cv::Mat res(rows,cols, channel);
+    cv::Mat res(rows, cols, channel);
+
     for (int i = 0; i < rows; ++i) {
-        res.row(i) = cv::Mat(input_vec[i]);
+        for (int j = 0; j < cols; ++j) {
+            res.at<T>(i,j) = input_vec[i][j];
+        }
     }
     return res;
 }
 
 int main() {
-    std::vector<std::vector<int>> new_matrix;
+    std::vector<std::vector<std::vector<int>>> img_matrix;
 
     std::string image_path;
     try {
@@ -122,65 +125,86 @@ int main() {
     }
 
     cv::Mat image = cv::imread(image_path, cv::IMREAD_COLOR);
-    auto image_ch =  image.type();
+    auto image_depth =  image.type();
+    auto image_ch = image.channels();
     cv::Mat image_channels[3];
     cv::split(image, image_channels);
 
-    new_matrix.resize(image_channels[0].rows);
-    for (int i = 0; i < image_channels[0].rows; ++i) {
-        new_matrix[i].resize(image_channels[0].cols);
-        for (int j = 0; j < image_channels[0].cols; ++j) {
-            try {
-                new_matrix[i][j] = image_channels[0].at<uchar>(i, j);
-            }
-            catch (std::exception err) {
-                std::cerr << "Error caught: " << err.what() << std::endl;
-            }
-        }
-    }
-
-    
-    //createMatrix(new_matrix, 1024, 1280);
-    //std::cout << "Generated matrix" << std::endl;
-    printMatrix(new_matrix);
+    std::vector<cv::Mat> output;
+    int ch = 0;
 
     std::cout << "Input blur radius" << std::endl;
     int blur_radius;
     std::cin >> blur_radius;
-    {
-        simpleTimer st;
-        std::vector<std::thread> thread_vector;
-        blur(new_matrix, blur_radius);
-        /*uint32_t thread_amount = new_matrix.size() / blur_radius;
-        const auto core_amount = std::thread::hardware_concurrency(); // TODO: limit amount of threads in realtion with amount of CPU cores.
-        uint32_t top_limit, bottom_limit;
-        thread_vector.reserve(thread_amount);
-        std::cout << thread_amount << " threads created" << std::endl;
-        top_limit = 0;
-        bottom_limit = top_limit + blur_radius;
-        std::vector<std::vector<std::vector<int>>> temp_matrix;
-        temp_matrix.resize(thread_amount);
-        for (int i = 0; i < thread_amount; ++i) {
-            thread_vector.emplace_back(std::thread(blur, std::ref(new_matrix), std::ref(temp_matrix[i]), blur_radius, top_limit, bottom_limit));
-            printMatrix(new_matrix);
-            top_limit = bottom_limit;
-            if (((new_matrix.size() - bottom_limit) / blur_radius) < 2) {
-                bottom_limit = new_matrix.size();
+
+    img_matrix.resize(image_ch);
+    for (auto& new_matrix : img_matrix) {
+        new_matrix.resize(image_channels[ch].rows);
+        for (int i = 0; i < image_channels[ch].rows; ++i) {
+            new_matrix[i].resize(image_channels[ch].cols);
+            for (int j = 0; j < image_channels[ch].cols; ++j) {
+                try {
+                    new_matrix[i][j] = image_channels[ch].at<uchar>(i, j);
+                }
+                catch (std::exception err) {
+                    std::cerr << "Error caught: " << err.what() << std::endl;
+                }
             }
-            else bottom_limit += blur_radius;
         }
-        for (auto& t : thread_vector) {
-            t.join();
+
+        {
+            simpleTimer st;
+            std::vector<std::thread> thread_vector;
+            blur(new_matrix, blur_radius);
+            /*uint32_t thread_amount = new_matrix.size() / blur_radius;
+            const auto core_amount = std::thread::hardware_concurrency(); // TODO: limit amount of threads in realtion with amount of CPU cores.
+            uint32_t top_limit, bottom_limit;
+            thread_vector.reserve(thread_amount);
+            std::cout << thread_amount << " threads created" << std::endl;
+            top_limit = 0;
+            bottom_limit = top_limit + blur_radius;
+            std::vector<std::vector<std::vector<int>>> temp_matrix;
+            temp_matrix.resize(thread_amount);
+            for (int i = 0; i < thread_amount; ++i) {
+                thread_vector.emplace_back(std::thread(blur, std::ref(new_matrix), std::ref(temp_matrix[i]), blur_radius, top_limit, bottom_limit));
+                printMatrix(new_matrix);
+                top_limit = bottom_limit;
+                if (((new_matrix.size() - bottom_limit) / blur_radius) < 2) {
+                    bottom_limit = new_matrix.size();
+                }
+                else bottom_limit += blur_radius;
+            }
+            for (auto& t : thread_vector) {
+                t.join();
+            }
+            new_matrix = temp_matrix[0];
+            for (uint32_t i = 1; i < thread_amount; ++i) {
+                new_matrix.insert(new_matrix.end(), temp_matrix[i].begin(), temp_matrix[i].end());
+            }*/
         }
-        new_matrix = temp_matrix[0];
-        for (uint32_t i = 1; i < thread_amount; ++i) {
-            new_matrix.insert(new_matrix.end(), temp_matrix[i].begin(), temp_matrix[i].end());
-        }*/
+
+        output.push_back(vecToCvMat(new_matrix, image_depth));
+        //std::cout << std::endl << std::endl << output.back() << std::endl << std::endl;
+        //printMatrix(new_matrix);
+        ++ch;
     }
-    cv::Mat output = vecToCvMat(new_matrix, image_ch);
-    cv::imwrite("../image_output/Tank.jpg", output);
-    std::cout << "Blurred result" << std::endl;
-    printMatrix(new_matrix);
+    cv::Mat result;
+    cv::merge(output, result);
+
+    cv::namedWindow("Blur?");
+    /*try {
+        cv::imshow("Blur?", result);
+    }
+    catch (cv::Exception e) {
+        std::cerr << e.what() << std::endl;
+    }*/
+
+    try {
+        cv::imwrite("../image_output/Tank.jpg", result);
+    }
+    catch (cv::Exception err) {
+        std::cerr << "Exception caught: " << err.what() << std::endl;
+    }
 
     return 0;
 }
