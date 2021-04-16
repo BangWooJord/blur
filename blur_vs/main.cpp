@@ -99,17 +99,18 @@ void blur(std::vector<std::vector<T>>& matrix, int blur_radius)
 }
 
 template <typename T, typename CH>
-cv::Mat& vecToCvMat(std::vector<std::vector<T>> &input_vec, CH channel) {
+cv::Mat vecToCvMat(std::vector<std::vector<T>> &input_vec, CH channel) {
     int rows = input_vec.size();
     int cols = input_vec[0].size();
 
-    cv::Mat res(rows, cols, channel);
+    cv::Mat res(rows, cols, CV_8U);
 
     for (int i = 0; i < rows; ++i) {
         for (int j = 0; j < cols; ++j) {
-            res.at<T>(i,j) = input_vec[i][j];
+            res.at<uchar>(i,j) = input_vec[i][j];
         }
     }
+    //res = cv::Mat::zeros(cv::Size(rows, cols), channel);
     return res;
 }
 
@@ -118,7 +119,7 @@ int main() {
 
     std::string image_path;
     try {
-        image_path = cv::samples::findFile("../image_input/Tank.jpg", 1);
+        image_path = cv::samples::findFile("../image_input/cat.jpg", 1);
     }
     catch (std::exception e) {
         std::cerr << "Error caught: " << e.what() << std::endl;
@@ -131,13 +132,14 @@ int main() {
     cv::split(image, image_channels);
 
     std::vector<cv::Mat> output;
-    int ch = 0;
 
     std::cout << "Input blur radius" << std::endl;
-    int blur_radius;
-    std::cin >> blur_radius;
+    int blur_radius =  4;
+    //std::cin >> blur_radius;
+    //std::cout << image_channels[0] << std::endl;
 
     img_matrix.resize(image_ch);
+    int ch = 0;
     for (auto& new_matrix : img_matrix) {
         new_matrix.resize(image_channels[ch].rows);
         for (int i = 0; i < image_channels[ch].rows; ++i) {
@@ -191,20 +193,21 @@ int main() {
     cv::Mat result;
     cv::merge(output, result);
 
-    cv::namedWindow("Blur?");
-    /*try {
+    try {
+        cv::namedWindow("Blur?");
         cv::imshow("Blur?", result);
+        cv::waitKey(0);
     }
     catch (cv::Exception e) {
         std::cerr << e.what() << std::endl;
-    }*/
+    }
 
-    try {
+    /*try {
         cv::imwrite("../image_output/Tank.jpg", result);
     }
     catch (cv::Exception err) {
         std::cerr << "Exception caught: " << err.what() << std::endl;
-    }
+    }*/
 
     return 0;
 }
