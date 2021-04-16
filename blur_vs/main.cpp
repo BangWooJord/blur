@@ -98,27 +98,40 @@ void blur(std::vector<std::vector<T>>& matrix, int blur_radius)
     }*/
 }
 
+template <typename T, typename CH>
+cv::Mat vecToCvMat(std::vector<std::vector<T>> &input_vec, CH channel) {
+    int rows = input_vec.size();
+    int cols = input_vec[0].size();
+
+    cv::Mat res(rows,cols, channel);
+    for (int i = 0; i < rows; ++i) {
+        res.row(i) = cv::Mat(input_vec[i]);
+    }
+    return res;
+}
+
 int main() {
-    std::vector<std::vector<double>> new_matrix;
+    std::vector<std::vector<int>> new_matrix;
 
     std::string image_path;
     try {
-        image_path = cv::samples::findFile("../image_input/cat.jpg", 1);
+        image_path = cv::samples::findFile("../image_input/Tank.jpg", 1);
     }
     catch (std::exception e) {
         std::cerr << "Error caught: " << e.what() << std::endl;
     }
 
     cv::Mat image = cv::imread(image_path, cv::IMREAD_COLOR);
+    auto image_ch =  image.type();
     cv::Mat image_channels[3];
     cv::split(image, image_channels);
-    
+
     new_matrix.resize(image_channels[0].rows);
     for (int i = 0; i < image_channels[0].rows; ++i) {
         new_matrix[i].resize(image_channels[0].cols);
         for (int j = 0; j < image_channels[0].cols; ++j) {
             try {
-                new_matrix[i][j] = image_channels[0].at<double>(i, j);
+                new_matrix[i][j] = image_channels[0].at<uchar>(i, j);
             }
             catch (std::exception err) {
                 std::cerr << "Error caught: " << err.what() << std::endl;
@@ -128,8 +141,8 @@ int main() {
 
     
     //createMatrix(new_matrix, 1024, 1280);
-    std::cout << "Generated matrix" << std::endl;
-    //printMatrix(new_matrix);
+    //std::cout << "Generated matrix" << std::endl;
+    printMatrix(new_matrix);
 
     std::cout << "Input blur radius" << std::endl;
     int blur_radius;
@@ -164,23 +177,10 @@ int main() {
             new_matrix.insert(new_matrix.end(), temp_matrix[i].begin(), temp_matrix[i].end());
         }*/
     }
+    cv::Mat output = vecToCvMat(new_matrix, image_ch);
+    cv::imwrite("../image_output/Tank.jpg", output);
     std::cout << "Blurred result" << std::endl;
-    //printMatrix(new_matrix);
+    printMatrix(new_matrix);
 
-    /*
-    std::string image_path = cv::samples::findFile("../image_input/cat.jpg");
-    cv::Mat image = cv::imread(image_path, cv::IMREAD_COLOR);
-    cv::String window_name = "Blur project";
-
-    std::cout << image.total() << std::endl;
-
-    cv::Mat image_channels[3];
-    cv::split(image, image_channels);
-
-    cv::namedWindow(window_name); // Create a window
-    cv::imshow(window_name, image); // Show our image inside the created window.
-    cv::waitKey(0); // Wait for any keystroke in the window
-    cv::destroyWindow(window_name); //destroy the created window
-    */
     return 0;
 }
