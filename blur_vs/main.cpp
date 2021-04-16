@@ -37,7 +37,8 @@ void createMatrix(std::vector<std::vector<int>>& matrix, int w, int h) {
     }
 }
 
-void printMatrix(std::vector<std::vector<int>>& matrix) {
+template <typename T>
+void printMatrix(std::vector<std::vector<T>>& matrix) {
     for (uint32_t i = 0; i < matrix.size(); ++i) {
         for (uint32_t j = 0; j < matrix[i].size(); ++j) {
             std::cout << std::setw(5) << matrix[i][j] << " ";
@@ -46,12 +47,13 @@ void printMatrix(std::vector<std::vector<int>>& matrix) {
     }
 }
 
-void blur(std::vector<std::vector<int>>& matrix, int blur_radius)
+template <typename T>
+void blur(std::vector<std::vector<T>>& matrix, int blur_radius)
 {
     uint32_t h = matrix.size();
     uint32_t w = matrix[0].size();
 
-    std::vector<std::vector<int>> result = matrix;
+    std::vector<std::vector<T>> result = matrix;
 
     for (int i = 0; i < h; ++i) {
         for (int j = 0; j < w; ++j) {
@@ -97,22 +99,30 @@ void blur(std::vector<std::vector<int>>& matrix, int blur_radius)
 }
 
 int main() {
-    std::vector<std::vector<int>> new_matrix;
+    std::vector<std::vector<double>> new_matrix;
 
-    std::string image_path = cv::samples::findFile("../image_input/cat.jpg");
+    std::string image_path;
+    try {
+        image_path = cv::samples::findFile("../image_input/cat.jpg", 1);
+    }
+    catch (std::exception e) {
+        std::cerr << "Error caught: " << e.what() << std::endl;
+    }
+
     cv::Mat image = cv::imread(image_path, cv::IMREAD_COLOR);
     cv::Mat image_channels[3];
-    cv::Mat helper[3];
-    cv::split(image, helper);
-    for (int i = 0; i < 3; ++i) {
-        helper[i].convertTo(image_channels[i], CV_32F);
-    }
+    cv::split(image, image_channels);
     
     new_matrix.resize(image_channels[0].rows);
     for (int i = 0; i < image_channels[0].rows; ++i) {
         new_matrix[i].resize(image_channels[0].cols);
         for (int j = 0; j < image_channels[0].cols; ++j) {
-            new_matrix[i][j] = image_channels[0].at<int>(i, j);
+            try {
+                new_matrix[i][j] = image_channels[0].at<double>(i, j);
+            }
+            catch (std::exception err) {
+                std::cerr << "Error caught: " << err.what() << std::endl;
+            }
         }
     }
 
