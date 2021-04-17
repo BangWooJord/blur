@@ -1,5 +1,5 @@
 # blur
-Trying to create my own blur, using multithreading
+Simple box blur that uses a separate thread for every image channel.
 
 Technologies: 
  - C++ 17, STL
